@@ -108,21 +108,19 @@ class Template2(Template):
         x = sym.symbols('x')  # A sympy variable.
         a, b, c, m, n = self.variables()  # Call the variables here.
 
-        f = a * x ** n + b * x ** m + c
-        df = sym.diff(f)
-
-        df_string = tools.polytex(df)  # You can use sym.polytex or tools.latex to get the LaTeX for a sympy expression.
-        f_string = tools.polytex(f)
-
-        a_term = abs(a) * x ** n
+        a_term = a * x ** n
         df_a = sym.diff(a_term)
-        a_term_string = tools.polytex(a_term)
-
-        b_term = abs(b) * x ** m
+        b_term = b * x ** n
         df_b = sym.diff(b_term)
-        b_term_string = tools.polytex(b_term)
+        f = a_term + b_term + c
+        df = df_a + df_b
 
-        c_term = abs(c)
+        df_string = tools.terms_string(df_a, df_b)  # You can use sym.polytex or tools.latex to get the LaTeX for a sympy expression.
+        f_string = tools.polytex(tools.terms_string(a_term, b_term, c))
+
+        a_abs_term_string = tools.polytex(abs(a) * x ** n)
+        b_abs_term_string = tools.polytex(abs(b) * x ** m)
+        c_abs_term_string = tools.polytex(abs(c))
 
         # This should contain your question string.
         question_stem = f"Find $_\\displaystyle \\frac{{d}}{{dx}} \\left({f_string}\\right)$_. "
@@ -151,19 +149,19 @@ class Template2(Template):
 
         if a < 0:
             explanation += f"-"
-        explanation += f"\\frac{{d}}{{dx}}\\left({a_term_string}\\right)"
+        explanation += f"\\frac{{d}}{{dx}}\\left({a_abs_term_string}\\right)"
 
         if b < 0:
             explanation += f"-"
         else:
             explanation += f"+"
-        explanation += f"\\frac{{d}}{{dx}}\\left({b_term_string}\\right)"
+        explanation += f"\\frac{{d}}{{dx}}\\left({b_abs_term_string}\\right)"
 
         if c < 0:
             explanation += f"-"
         else:
             explanation += f"+"
-        explanation += f"\\frac{{d}}{{dx}}\\left({c_term}\\right)" \
+        explanation += f"\\frac{{d}}{{dx}}\\left({c_abs_term_string}\\right)" \
                        f"\\end{{align}}$$ </p>" \
                        f"<p>Applying the constant rule to take the constants outside of the derivatives and using the" \
                        f" fact that the derivative of a constant is zero, we have" \
