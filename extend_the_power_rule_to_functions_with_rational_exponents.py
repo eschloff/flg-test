@@ -104,6 +104,7 @@ class Template2(Template):
         assert c != 1
         assert not (b == 0 and c == 0)  # b and c cannot both be 0
         assert not m == n  # exponents cannot be the same
+        assert abs(n) > abs(m)  # this fixes ordering in polynomial
         assert not (m_num % m_denom == 0 and n_num % n_denom == 0)  # only one exponent if any can be an integer
         assert not (m_num > 0 and n_num > 0)  # at least one exponent is negative
         if m_num % m_denom != 0:  # ensures a negative fractional exponent
@@ -124,17 +125,13 @@ class Template2(Template):
         f = a_term + b_term + c
         df = df_a + df_b
 
-        df_string = tools.polytex(df)  # You can use sym.polytex or tools.latex to get the LaTeX for a sympy expression.
+        df_string = tools.add_terms(df)  # You can use sym.polytex or tools.latex to get the LaTeX for a sympy expression.
 
         a_abs_term_string = tools.polytex(abs(a) * x ** n)
         b_abs_term_string = tools.polytex(abs(b) * x ** m)
         c_abs_term_string = tools.polytex(abs(c))
 
         f_string = tools.polytex(a_term) + tools.polytex(b_sign) + b_abs_term_string + tools.polytex(c_sign) + c_abs_term_string
-        if b == 0:
-            f_string = tools.polytex(a_term) + tools.polytex(c_sign) + c_abs_term_string
-        elif c == 0:
-            f_string = tools.polytex(a_term) + tools.polytex(b_sign) + b_abs_term_string
 
         # This should contain your question string.
         question_stem = f"Find $_\\displaystyle \\frac{{d}}{{dx}} \\left({f_string}\\right)$_. "
@@ -159,31 +156,28 @@ class Template2(Template):
                        f"$$\\begin{{align}}" \
                        f"f(x) &= {f_string} \\\\[5pt] " \
                        f"\\frac{{d}}{{dx}}f(x) &= \\frac{{d}}{{dx}}\\left({f_string}\\right) \\\\[5pt] " \
-                       f"&= "
-
-        if a < 0:
-            explanation += f"-"
-        explanation += f"\\frac{{d}}{{dx}}\\left({a_abs_term_string}\\right)"
+                       f"&= \\frac{{d}}{{dx}}\\left({tools.polytex(a_term)}\\right)"
 
         if b != 0:  # if b is zero don't include this term
-            if b < 0:
-                explanation += f"-"
+            if b > 0:
+                explanation += f"+\\frac{{d}}{{dx}}\\left({b_abs_term_string}\\right)"
             else:
-                explanation += f"+"
-            explanation += f"\\frac{{d}}{{dx}}\\left({b_abs_term_string}\\right)"
+                explanation += f"-\\frac{{d}}{{dx}}\\left({b_abs_term_string}\\right)"
 
         if c != 0:  # if c is zero don't include this term
-            if c < 0:
-                explanation += f"-"
+            if c > 0:
+                explanation += f"+\\frac{{d}}{{dx}}\\left({c_abs_term_string}\\right)."
             else:
-                explanation += f"+"
-            explanation += f"\\frac{{d}}{{dx}}\\left({c_abs_term_string}\\right)." \
+                explanation += f"-\\frac{{d}}{{dx}}\\left({c_abs_term_string}\\right)."
+        else:
+            explanation += f"."
 
         explanation += f"\\end{{align}}$$ </p>" \
                        f"<p>Applying the constant rule to take the constants outside of the derivatives and using the" \
                        f" fact that the derivative of a constant is zero, we have" \
                        f"$$\\begin{{align}}" \
                        f"f'(x) &= {a}\\frac{{d}}{{dx}}\\left({tools.polytex(x ** n)}\\right)"
+
         if b != 0:  # if b is zero don't include this term
             explanation += f"{b_sign}{abs(b)}\\frac{{d}}{{dx}}\\left({tools.polytex(x ** m)}\\right)"
         if c != 0:  # if c is zero don't include this term
@@ -192,7 +186,8 @@ class Template2(Template):
         explanation += f"\\end{{align}}$$</p>" \
                        f"<p>Finally, use the power rule to take the derivative of the $_x^n$_ terms and simplify to find " \
                        f"$$\\begin{{align}}"
-        # conditional here on n and m being 1 are to prevent the term from looking strange in explanation, i.e. "1x^(1-1)" instead of "1".
+
+        # conditionals here on n and m being 1 are to prevent the term from looking strange in explanation, i.e. "1x^(1-1)" instead of "1".
         if n == 1:
             explanation += f"f'(x) &= {a}\\left(1\\right)"
         else:
