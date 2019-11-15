@@ -91,16 +91,19 @@ class Template2(Template):
         n_denom = random.randint(2, 9)
         n = sym.Rational(n_num, n_denom)
 
-        a_sign, b_sign = "-", "-"
-        if a >= 0:
-            a_sign = "+"
-        if b >= 0:
-            b_sign = "+"
+        a_sign, b_sign, c_sign = "+", "+", "+"
+        if a < 0:
+            a_sign = "-"
+        if b < 0:
+            b_sign = "-"
+        if c < 0:
+            c_sign = "-"
 
         assert a != 1  # assures a non-trivial coefficient
         assert b != 1
         assert c != 1
         assert not (b == 0 and c == 0)  # b and c cannot both be 0
+        assert not m == n  # exponents cannot be the same
         assert not (m_num % m_denom == 0 and n_num % n_denom == 0)  # only one exponent if any can be an integer
         assert not (m_num > 0 and n_num > 0)  # at least one exponent is negative
         if m_num % m_denom != 0:  # ensures a negative fractional exponent
@@ -108,11 +111,11 @@ class Template2(Template):
         else:
             assert n_num < 0
 
-        return a, b, c, m, n, a_sign, b_sign
+        return a, b, c, m, n, a_sign, b_sign, c_sign
 
     def template(self):
         x = sym.symbols('x')  # A sympy variable.
-        a, b, c, m, n, a_sign, b_sign = self.variables()  # Call the variables here.
+        a, b, c, m, n, a_sign, b_sign, c_sign = self.variables()  # Call the variables here.
 
         a_term = a * x ** n
         df_a = sym.diff(a_term)
@@ -121,12 +124,17 @@ class Template2(Template):
         f = a_term + b_term + c
         df = df_a + df_b
 
-        df_string = tools.terms_string(df_a, df_b)  # You can use sym.polytex or tools.latex to get the LaTeX for a sympy expression.
-        f_string = tools.polytex(f)
+        df_string = tools.polytex(df)  # You can use sym.polytex or tools.latex to get the LaTeX for a sympy expression.
 
         a_abs_term_string = tools.polytex(abs(a) * x ** n)
         b_abs_term_string = tools.polytex(abs(b) * x ** m)
         c_abs_term_string = tools.polytex(abs(c))
+
+        f_string = tools.polytex(a_term) + tools.polytex(b_sign) + b_abs_term_string + tools.polytex(c_sign) + c_abs_term_string
+        if b == 0:
+            f_string = tools.polytex(a_term) + tools.polytex(c_sign) + c_abs_term_string
+        elif c == 0:
+            f_string = tools.polytex(a_term) + tools.polytex(b_sign) + b_abs_term_string
 
         # This should contain your question string.
         question_stem = f"Find $_\\displaystyle \\frac{{d}}{{dx}} \\left({f_string}\\right)$_. "
@@ -157,37 +165,48 @@ class Template2(Template):
             explanation += f"-"
         explanation += f"\\frac{{d}}{{dx}}\\left({a_abs_term_string}\\right)"
 
-        if b < 0:
-            explanation += f"-"
-        else:
-            explanation += f"+"
-        explanation += f"\\frac{{d}}{{dx}}\\left({b_abs_term_string}\\right)"
+        if b != 0:  # if b is zero don't include this term
+            if b < 0:
+                explanation += f"-"
+            else:
+                explanation += f"+"
+            explanation += f"\\frac{{d}}{{dx}}\\left({b_abs_term_string}\\right)"
 
-        if c < 0:
-            explanation += f"-"
-        else:
-            explanation += f"+"
-        explanation += f"\\frac{{d}}{{dx}}\\left({c_abs_term_string}\\right)." \
-                       f"\\end{{align}}$$ </p>" \
+        if c != 0:  # if c is zero don't include this term
+            if c < 0:
+                explanation += f"-"
+            else:
+                explanation += f"+"
+            explanation += f"\\frac{{d}}{{dx}}\\left({c_abs_term_string}\\right)." \
+
+        explanation += f"\\end{{align}}$$ </p>" \
                        f"<p>Applying the constant rule to take the constants outside of the derivatives and using the" \
                        f" fact that the derivative of a constant is zero, we have" \
                        f"$$\\begin{{align}}" \
-                       f"f'(x) &= {a}\\frac{{d}}{{dx}}\\left(x^{{{n}}}\\right){b_sign}{b}\\frac{{d}}{{dx}}\\left(x^{{{m}}}\\right)" \
+                       f"f'(x) &= {a}\\frac{{d}}{{dx}}\\left({tools.polytex(x ** n)}\\right)"
+        if b != 0:  # if b is zero don't include this term
+            explanation += f"{b_sign}{abs(b)}\\frac{{d}}{{dx}}\\left({tools.polytex(x ** m)}\\right)"
+        if c != 0:  # if c is zero don't include this term
+            explanation += f"{c_sign}0"
+
+        explanation += f"\\end{{align}}$$</p>" \
+                       f"<p>Finally, use the power rule to take the derivative of the $_x^n$_ terms and simplify to find " \
+                       f"$$\\begin{{align}}"
+        # conditional here on n and m being 1 are to prevent the term from looking strange in explanation, i.e. "1x^(1-1)" instead of "1".
+        if n == 1:
+            explanation += f"f'(x) &= {a}\\left(1\\right)"
+        else:
+            explanation += f"f'(x) &= {a}\\left({sym.latex(n)}x^{{{n}-1}}\\right)"
+
+        if b != 0:  # if b is zero don't include this term
+            if m == 1:
+                explanation += f"{b_sign}{abs(b)}\\left(1\\right) "
+            else:
+                explanation += f"{b_sign}{abs(b)}\\left({sym.latex(m)}x^{{{m}-1}}\\right) "
+
+        explanation += f"\\\\[5pt] " \
+                       f"&= {df_string}." \
                        f"\\end{{align}}$$</p>"
-
-
-        #
-        # explanation += f"take the constant, $_{a}$_ outside of the derivative to find" \
-        #                f"$$\\begin{{align}}" \
-        #                f"\\frac{{d}}{{dx}} f(x) &= \\frac{{d}}{{dx}} \\left({f_string}\\right) \\\\[5pt]" \
-        #                f"&= {a} \\cdot \\frac{{d}}{{dx}} \\left(x^{{ {n} }}\\right)." \
-        #                f"\\end{{align}}$$ </p>" \
-        #                f"<p>Using the power rule to differentiate $_x^{{ {n} }} $_ we have" \
-        #                f"$$\\begin{{align}}" \
-        #                f"\\frac{{d}}{{dx}} f(x) &= {a} \\cdot \\frac{{d}}{{dx}} \\left(x^{{ {n} }}\\right) \\\\[5pt]" \
-        #                f"&= {a}\\left({sym.latex(n)}x^{{ {n} - 1 }}\\right) \\\\[5pt]" \
-        #                f"&= {df_string}." \
-        #                f"\\end{{align}}$$</p>"
 
         # Fill this in with the correct answer. It should be in LaTeX notation but without any wrappers.
         correct_answer = f" "
