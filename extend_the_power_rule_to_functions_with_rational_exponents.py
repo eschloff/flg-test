@@ -103,8 +103,7 @@ class Template2(Template):
         assert b != 1
         assert c != 1
         assert not (b == 0 and c == 0)  # b and c cannot both be 0
-        assert not m == n  # exponents cannot be the same
-        assert abs(n) > abs(m)  # this fixes ordering in polynomial
+        assert not n == m  # this ensures terms should not have been combined
         assert not (m_num % m_denom == 0 and n_num % n_denom == 0)  # only one exponent if any can be an integer
         assert not (m_num > 0 and n_num > 0)  # at least one exponent is negative
         if m_num % m_denom != 0:  # ensures a negative fractional exponent
@@ -118,20 +117,27 @@ class Template2(Template):
         x = sym.symbols('x')  # A sympy variable.
         a, b, c, m, n, a_sign, b_sign, c_sign = self.variables()  # Call the variables here.
 
+        # These variables declared in order to track throughout, get signs right, and preserve ordering
         a_term = a * x ** n
         df_a = sym.diff(a_term)
         b_term = b * x ** m
         df_b = sym.diff(b_term)
-        f = a_term + b_term + c
-        df = df_a + df_b
-
-        df_string = tools.add_terms(df)  # You can use sym.polytex or tools.latex to get the LaTeX for a sympy expression.
-
-        a_abs_term_string = tools.polytex(abs(a) * x ** n)
         b_abs_term_string = tools.polytex(abs(b) * x ** m)
         c_abs_term_string = tools.polytex(abs(c))
 
+        # Build the function string, accounting for missing terms
         f_string = tools.polytex(a_term) + tools.polytex(b_sign) + b_abs_term_string + tools.polytex(c_sign) + c_abs_term_string
+        if b == 0:
+            f_string = tools.polytex(a_term) + tools.polytex(c_sign) + c_abs_term_string
+        elif c == 0:
+            f_string = tools.polytex(a_term) + tools.polytex(b_sign) + b_abs_term_string
+
+        # Build the answer string, accounting for the b term possibly being 0
+        ans_string = tools.polytex(df_a)
+        if b != 0:
+            if (b * m) > 0:
+                ans_string += "+"
+            ans_string += tools.polytex(df_b)
 
         # This should contain your question string.
         question_stem = f"Find $_\\displaystyle \\frac{{d}}{{dx}} \\left({f_string}\\right)$_. "
@@ -160,7 +166,7 @@ class Template2(Template):
 
         if b != 0:  # if b is zero don't include this term
             if b > 0:
-                explanation += f"+\\frac{{d}}{{dx}}\\left({b_abs_term_string}\\right)"
+                explanation += f"+\\frac{{d}}{{dx}}\\left({b_abs_term_string}\\right)"  # sign is in front on purpose
             else:
                 explanation += f"-\\frac{{d}}{{dx}}\\left({b_abs_term_string}\\right)"
 
@@ -170,7 +176,7 @@ class Template2(Template):
             else:
                 explanation += f"-\\frac{{d}}{{dx}}\\left({c_abs_term_string}\\right)."
         else:
-            explanation += f"."
+            explanation += f"."  # add the final period here since we don't have a c term
 
         explanation += f"\\end{{align}}$$ </p>" \
                        f"<p>Applying the constant rule to take the constants outside of the derivatives and using the" \
@@ -183,31 +189,36 @@ class Template2(Template):
         if c != 0:  # if c is zero don't include this term
             explanation += f"{c_sign}0"
 
-        explanation += f"\\end{{align}}$$</p>" \
+        explanation += f".\\end{{align}}$$</p>" \
                        f"<p>Finally, use the power rule to take the derivative of the $_x^n$_ terms and simplify to find " \
                        f"$$\\begin{{align}}"
 
-        # conditionals here on n and m being 1 are to prevent the term from looking strange in explanation, i.e. "1x^(1-1)" instead of "1".
+        # conditionals here on n and m being 1 or -1 are to prevent the term from looking strange in explanation,
+        # i.e. "1x^(1-1)" instead of "1".
         if n == 1:
             explanation += f"f'(x) &= {a}\\left(1\\right)"
+        elif n == -1:
+            explanation += f"f'(x) &= {a}\\left(-x^{{{n}-1}}\\right)"
         else:
             explanation += f"f'(x) &= {a}\\left({sym.latex(n)}x^{{{n}-1}}\\right)"
 
         if b != 0:  # if b is zero don't include this term
             if m == 1:
                 explanation += f"{b_sign}{abs(b)}\\left(1\\right) "
+            elif m == -1:
+                explanation += f"{b_sign}{abs(b)}\\left(-x^{{{m}-1}}\\right) "
             else:
                 explanation += f"{b_sign}{abs(b)}\\left({sym.latex(m)}x^{{{m}-1}}\\right) "
 
         explanation += f"\\\\[5pt] " \
-                       f"&= {df_string}." \
+                       f"&= {ans_string}." \
                        f"\\end{{align}}$$</p>"
 
         # Fill this in with the correct answer. It should be in LaTeX notation but without any wrappers.
-        correct_answer = f" "
+        correct_answer = f"\\frac{{d}}{{dx}}\\left({f_string}\\right)={ans_string} "
 
         # You can leave this blank
-        question_template = f" "
+        question_template = f"\\frac{{d}}{{dx}}\\left({f_string}\\right)={{{{response}}}}"
 
         json_blob = validations.lea_blob(template=question_template,
                                          response=correct_answer,
