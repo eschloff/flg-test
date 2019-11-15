@@ -91,6 +91,12 @@ class Template2(Template):
         n_denom = random.randint(2, 9)
         n = sym.Rational(n_num, n_denom)
 
+        a_sign, b_sign = "-", "-"
+        if a >= 0:
+            a_sign = "+"
+        if b >= 0:
+            b_sign = "+"
+
         assert a != 1  # assures a non-trivial coefficient
         assert b != 1
         assert c != 1
@@ -102,21 +108,21 @@ class Template2(Template):
         else:
             assert n_num < 0
 
-        return a, b, c, m, n
+        return a, b, c, m, n, a_sign, b_sign
 
     def template(self):
         x = sym.symbols('x')  # A sympy variable.
-        a, b, c, m, n = self.variables()  # Call the variables here.
+        a, b, c, m, n, a_sign, b_sign = self.variables()  # Call the variables here.
 
         a_term = a * x ** n
         df_a = sym.diff(a_term)
-        b_term = b * x ** n
+        b_term = b * x ** m
         df_b = sym.diff(b_term)
         f = a_term + b_term + c
         df = df_a + df_b
 
         df_string = tools.terms_string(df_a, df_b)  # You can use sym.polytex or tools.latex to get the LaTeX for a sympy expression.
-        f_string = tools.polytex(tools.terms_string(a_term, b_term, c))
+        f_string = tools.polytex(f)
 
         a_abs_term_string = tools.polytex(abs(a) * x ** n)
         b_abs_term_string = tools.polytex(abs(b) * x ** m)
@@ -144,7 +150,7 @@ class Template2(Template):
         explanation += f"<p>Applying the sum and difference rules to the given function gives " \
                        f"$$\\begin{{align}}" \
                        f"f(x) &= {f_string} \\\\[5pt] " \
-                       f"\\frac{{d}}{{dx}}f(x) &= \\frac{{d}}{{dx}}\\left({f_string}\\right)" \
+                       f"\\frac{{d}}{{dx}}f(x) &= \\frac{{d}}{{dx}}\\left({f_string}\\right) \\\\[5pt] " \
                        f"&= "
 
         if a < 0:
@@ -161,10 +167,12 @@ class Template2(Template):
             explanation += f"-"
         else:
             explanation += f"+"
-        explanation += f"\\frac{{d}}{{dx}}\\left({c_abs_term_string}\\right)" \
+        explanation += f"\\frac{{d}}{{dx}}\\left({c_abs_term_string}\\right)." \
                        f"\\end{{align}}$$ </p>" \
                        f"<p>Applying the constant rule to take the constants outside of the derivatives and using the" \
                        f" fact that the derivative of a constant is zero, we have" \
+                       f"$$\\begin{{align}}" \
+                       f"f'(x) &= {a}\\frac{{d}}{{dx}}\\left(x^{{{n}}}\\right){b_sign}{b}\\frac{{d}}{{dx}}\\left(x^{{{m}}}\\right)" \
                        f"\\end{{align}}$$</p>"
 
 
